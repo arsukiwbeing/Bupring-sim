@@ -1,2 +1,0 @@
-# Bupring-sim
-Script
