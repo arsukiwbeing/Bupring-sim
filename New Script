@@ -1,0 +1,491 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+local TeleportService = game:GetService("TeleportService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Global Değişkenler
+getgenv().equip = false
+getgenv().autoPrestige = false
+getgenv().autoGem = false
+getgenv().autoDrink = false
+getgenv().walkspeedLoop = false
+getgenv().walkonwater = false
+
+-- ScreenGui Ana Gövde
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BurpingSimHub"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = PlayerGui
+
+-- Ana Pencere (Siyah)
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "AnaPencere"
+mainFrame.Size = UDim2.new(0, 500, 0, 350)
+mainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true
+mainFrame.Parent = screenGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 10)
+mainCorner.Parent = mainFrame
+
+-- Üst Bar (Sürükleme Alanı)
+local topBar = Instance.new("Frame")
+topBar.Size = UDim2.new(1, 0, 0, 40)
+topBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+topBar.BorderSizePixel = 0
+topBar.Parent = mainFrame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -90, 1, 0)
+title.Position = UDim2.new(0, 15, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "Made By Aras|Burping Simulator Script"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 13
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = topBar
+
+-- Küçültme (-) Butonu
+local minimizeBtn = Instance.new("TextButton")
+minimizeBtn.Size = UDim2.new(0, 30, 0, 30)
+minimizeBtn.Position = UDim2.new(1, -70, 0, 5)
+minimizeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+minimizeBtn.Text = "-"
+minimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minimizeBtn.Font = Enum.Font.GothamBold
+minimizeBtn.TextSize = 18
+minimizeBtn.Parent = topBar
+
+local miniCorner = Instance.new("UICorner")
+miniCorner.CornerRadius = UDim.new(0, 6)
+miniCorner.Parent = minimizeBtn
+
+-- Kapatma (X) Butonu
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -35, 0, 5)
+closeBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.Parent = topBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeBtn
+
+closeBtn.MouseButton1Click:Connect(function()
+    mainFrame.Visible = false
+end)
+
+-- Küçültme / Büyütme Mantığı
+local isMinimized = false
+minimizeBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        mainFrame:TweenSize(UDim2.new(0, 500, 0, 40), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.3, true)
+        minimizeBtn.Text = "+"
+    else
+        mainFrame:TweenSize(UDim2.new(0, 500, 0, 350), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.3, true)
+        minimizeBtn.Text = "-"
+    end
+end)
+
+-- Sol Sekme Paneli (Tabs)
+local tabContainer = Instance.new("Frame")
+tabContainer.Size = UDim2.new(0, 120, 1, -40)
+tabContainer.Position = UDim2.new(0, 0, 0, 40)
+tabContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+tabContainer.BorderSizePixel = 0
+tabContainer.Parent = mainFrame
+
+local tabLayout = Instance.new("UIListLayout")
+tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+tabLayout.Padding = UDim.new(0, 5)
+tabLayout.Parent = tabContainer
+
+local tabPadding = Instance.new("UIPadding")
+tabPadding.PaddingTop = UDim.new(0, 10)
+tabPadding.PaddingLeft = UDim.new(0, 5)
+tabPadding.PaddingRight = UDim.new(0, 5)
+tabPadding.Parent = tabContainer
+
+-- Sağ İçerik Alanı
+local contentContainer = Instance.new("Frame")
+contentContainer.Size = UDim2.new(1, -130, 1, -50)
+contentContainer.Position = UDim2.new(0, 125, 0, 45)
+contentContainer.BackgroundTransparency = 1
+contentContainer.Parent = mainFrame
+
+-- Sürükleme Mantığı
+local dragging, dragInput, dragStart, startPos
+topBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
+    end
+end)
+topBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Sekme & İçerik Oluşturucu Mimarisi
+local pages = {}
+
+local function createTab(name)
+    local tabBtn = Instance.new("TextButton")
+    tabBtn.Size = UDim2.new(1, 0, 0, 32)
+    tabBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    tabBtn.Text = name
+    tabBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+    tabBtn.Font = Enum.Font.GothamMedium
+    tabBtn.TextSize = 11
+    tabBtn.Parent = tabContainer
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 6)
+    btnCorner.Parent = tabBtn
+
+    local page = Instance.new("ScrollingFrame")
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.BackgroundTransparency = 1
+    page.BorderSizePixel = 0
+    page.Visible = false
+    page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    page.ScrollBarThickness = 4
+    page.ScrollBarImageColor3 = Color3.fromRGB(200, 200, 200)
+    page.Parent = contentContainer
+
+    local pageLayout = Instance.new("UIListLayout")
+    pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    pageLayout.Padding = UDim.new(0, 8)
+    pageLayout.Parent = page
+
+    pageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        page.CanvasSize = UDim2.new(0, 0, 0, pageLayout.AbsoluteContentSize.Y + 10)
+    end)
+
+    tabBtn.MouseButton1Click:Connect(function()
+        for _, p in pairs(pages) do p.page.Visible = false end
+        for _, b in pairs(tabContainer:GetChildren()) do
+            if b:IsA("TextButton") then 
+                b.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+                b.TextColor3 = Color3.fromRGB(180, 180, 180)
+            end
+        end
+        page.Visible = true
+        tabBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        tabBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+    end)
+
+    table.insert(pages, {button = tabBtn, page = page})
+    return page
+end
+
+local function createButton(parent, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.95, 0, 0, 35)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 13
+    btn.Parent = parent
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    btn.MouseButton1Click:Connect(callback)
+end
+
+local function createToggle(parent, text, callback)
+    local state = false
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.95, 0, 0, 35)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    btn.Text = text .. ": KAPALI"
+    btn.TextColor3 = Color3.fromRGB(150, 150, 150)
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 13
+    btn.Parent = parent
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+
+    btn.MouseButton1Click:Connect(function()
+        state = not state
+        if state then
+            btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+            btn.TextColor3 = Color3.fromRGB(0, 0, 0)
+            btn.Text = text .. ": AÇIK"
+        else
+            btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+            btn.TextColor3 = Color3.fromRGB(150, 150, 150)
+            btn.Text = text .. ": KAPALI"
+        end
+        callback(state)
+    end)
+end
+
+local function createLabel(parent, text)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0.95, 0, 0, 35)
+    lbl.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    lbl.Text = text
+    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 14
+    lbl.Parent = parent
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = lbl
+end
+
+-- Sayfalar
+local autoFarmPage = createTab("Auto Farm")
+local localPlayerPage = createTab("Local Player")
+local teleportPage = createTab("Teleport")
+local miscPage = createTab("Misc")
+local animationsPage = createTab("Animations")
+local helpersPage = createTab("HELPERS")
+
+-- Varsayılan Sekmeyi Aç
+pages[1].page.Visible = true
+pages[1].button.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+pages[1].button.TextColor3 = Color3.fromRGB(0, 0, 0)
+
+------------------------------------------------------------------
+-- 1. AUTO FARM
+------------------------------------------------------------------
+local function AutoEquipLogic()
+    task.spawn(function()
+        while getgenv().equip do
+            task.wait(1)
+            local lp = LocalPlayer
+            local bp = lp:FindFirstChild("Backpack")
+            local char = lp.Character
+
+            if bp and char then
+                if not bp:FindFirstChild("Starter Drink") and not char:FindFirstChild("Starter Drink") then
+                    char:BreakJoints()
+                end
+
+                local leaderstats = lp:FindFirstChild("leaderstats")
+                local burpVal = leaderstats and leaderstats:FindFirstChild("Burp points") and leaderstats["Burp points"].Value or 0
+                local humanoid = char:FindFirstChildOfClass("Humanoid")
+
+                if humanoid then
+                    local toolName = "Starter Drink"
+                    if burpVal >= 2000000 then toolName = "Garlic Juice"
+                    elseif burpVal >= 1000000 then toolName = "Thunder Fizz"
+                    elseif burpVal >= 500000 then toolName = "Omega Burp Juice"
+                    elseif burpVal >= 230000 then toolName = "Atomic Drink"
+                    elseif burpVal >= 150000 then toolName = "Ninth Drink"
+                    elseif burpVal >= 60000 then toolName = "Eighth Drink"
+                    elseif burpVal >= 25000 then toolName = "Seventh Drink"
+                    elseif burpVal >= 10000 then toolName = "Sixth Drink"
+                    elseif burpVal >= 3500 then toolName = "Fifth Drink"
+                    elseif burpVal >= 1600 then toolName = "Fourth Drink"
+                    elseif burpVal >= 500 then toolName = "Third Drink"
+                    elseif burpVal >= 150 then toolName = "Second Drink"
+                    end
+
+                    if bp:FindFirstChild("Garlic Juice") then toolName = "Garlic Juice" end
+                    
+                    local tool = bp:FindFirstChild(toolName)
+                    if tool then humanoid:EquipTool(tool) end
+                end
+            end
+        end
+    end)
+end
+
+createToggle(autoFarmPage, "Auto Equip", function(bool)
+    getgenv().equip = bool
+    if bool then AutoEquipLogic() end
+end)
+
+createToggle(autoFarmPage, "Auto Prestige", function(bool)
+    getgenv().autoPrestige = bool
+    task.spawn(function()
+        while getgenv().autoPrestige do
+            local rem = ReplicatedStorage:FindFirstChild("RemoteEvents")
+            if rem and rem:FindFirstChild("PrestigeEvent") then
+                rem.PrestigeEvent:FireServer()
+            end
+            task.wait(0.1)
+        end
+    end)
+end)
+
+createToggle(autoFarmPage, "Auto Collect Gem", function(bool)
+    getgenv().autoGem = bool
+    task.spawn(function()
+        while getgenv().autoGem do
+            if Workspace:FindFirstChild("Diamonds") and Workspace.Diamonds:FindFirstChild("Diamond") then
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("HumanoidRootPart") then
+                    Workspace.Diamonds.Diamond.CFrame = char.HumanoidRootPart.CFrame
+                end
+            end
+            task.wait()
+        end
+    end)
+end)
+
+createToggle(autoFarmPage, "Auto Drink", function(bool)
+    getgenv().autoDrink = bool
+    task.spawn(function()
+        local drinks = {
+            "Starter Drink", "Second Drink", "Third Drink", "Fourth Drink",
+            "Fifth Drink", "Sixth Drink", "Seventh Drink", "Eighth Drink",
+            "Ninth Drink", "Atomic Drink", "Omega Burp Juice", "Thunder Fizz", "Garlic Juice"
+        }
+        while getgenv().autoDrink do
+            local rem = ReplicatedStorage:FindFirstChild("RemoteEvents")
+            if rem and rem:FindFirstChild("DrinkEvent") then
+                for _, drink in ipairs(drinks) do
+                    rem.DrinkEvent:FireServer(drink)
+                end
+            end
+            task.wait(2.34)
+        end
+    end)
+end)
+
+------------------------------------------------------------------
+-- 2. LOCAL PLAYER
+------------------------------------------------------------------
+createToggle(localPlayerPage, "WalkSpeed (650)", function(bool)
+    getgenv().walkspeedLoop = bool
+    task.spawn(function()
+        while getgenv().walkspeedLoop do
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+                LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 650
+            end
+            task.wait()
+        end
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = 16
+        end
+    end)
+end)
+
+createButton(localPlayerPage, "Inf Jump", function()
+    UserInputService.JumpRequest:Connect(function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+        end
+    end)
+end)
+
+------------------------------------------------------------------
+-- 3. TELEPORT
+------------------------------------------------------------------
+local function tweenTo(cframe)
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        local ti = TweenInfo.new(1, Enum.EasingStyle.Linear)
+        TweenService:Create(char.HumanoidRootPart, ti, {CFrame = cframe}):Play()
+    end
+end
+
+createButton(teleportPage, "Safe Zone", function() tweenTo(CFrame.new(-46, 48, -15)) end)
+createButton(teleportPage, "Pet Shop", function() tweenTo(CFrame.new(311, 52, 103)) end)
+createButton(teleportPage, "Disco Island", function() tweenTo(CFrame.new(63, 48, 636)) end)
+createButton(teleportPage, "Cloud One", function() tweenTo(CFrame.new(296, 566, 689)) end)
+createButton(teleportPage, "Cloud Second", function() tweenTo(CFrame.new(-1224, 557, -318)) end)
+createButton(teleportPage, "Sky Island", function() tweenTo(CFrame.new(2132, 1456, -1034)) end)
+
+------------------------------------------------------------------
+-- 4. MISC
+------------------------------------------------------------------
+createButton(miscPage, "Rejoin", function()
+    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+end)
+
+createButton(miscPage, "Infinity Yield", function()
+    loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))()
+end)
+
+createButton(miscPage, "Anti Kick", function()
+    local mt = getrawmetatable(game)
+    local old = mt.__namecall
+    local protect = newcclosure or function(f) return f end
+
+    setreadonly(mt, false)
+    mt.__namecall = protect(function(self, ...)
+        local method = getnamecallmethod()
+        if method == "Kick" then
+            task.wait(9e9)
+            return
+        end
+        return old(self, ...)
+    end)
+    hookfunction(LocalPlayer.Kick, protect(function() task.wait(9e9) end))
+end)
+
+createButton(miscPage, "Anti Afk", function()
+    loadstring(game:HttpGet("https://pastebin.com/raw/KHZ8pYx9", true))()
+end)
+
+createButton(miscPage, "Burp points", function()
+    loadstring(game:HttpGet("https://pastebin.com/raw/XCXxhZht", true))()
+end)
+
+createButton(miscPage, "ShiftLock", function()
+    loadstring(game:HttpGet("https://scriptblox.com/raw/Universal-Script-Permanent-Shiftlock-7513"))()
+end)
+
+createToggle(miscPage, "Walk on water", function(bool)
+    getgenv().walkonwater = bool
+    for _, v in pairs(Workspace:GetChildren()) do
+        if v:IsA("Part") and v.Color == Color3.fromRGB(9, 137, 207) then
+            v.CanCollide = bool
+        end
+    end
+end)
+
+createToggle(miscPage, "Wall noclip", function(bool)
+    if Workspace:FindFirstChild("BorderWalls") then
+        for _, v in pairs(Workspace.BorderWalls:GetChildren()) do
+            v.CanCollide = not bool
+        end
+    end
+end)
+
+------------------------------------------------------------------
+-- 5. ANIMATIONS
+------------------------------------------------------------------
+createButton(animationsPage, "animation", function()
+    loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-GAE-SIMPLIFIED-27193"))()
+end)
+
+------------------------------------------------------------------
+-- 6. HELPERS
+------------------------------------------------------------------
+createLabel(helpersPage, "Granny help so much")
